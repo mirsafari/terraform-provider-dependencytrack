@@ -1,3 +1,23 @@
+## 1.26
+
+#### FEATURES
+- Add `dependencytrack_service_account`, `dependencytrack_workload_identity_provider` and `dependencytrack_workload_identity_binding` resources, requiring API v5.2+.
+	- `dependencytrack_user_permission` and `dependencytrack_user_team` accept service account usernames (`svc:<name>`).
+
+#### FIXES
+- Accept pre-release API versions, such as `5.2.0-SNAPSHOT`, when parsing the server version.
+- Handle the API v5.2 response when deleting a `dependencytrack_component` that no longer exists.
+
+#### DEPENDENCIES
+- Override `github.com/DependencyTrack/client-go` with `github.com/mirsafari/solarfactories-client-go@workload-identity`
+	- Adds the API v2 Service Account and Workload Identity Provider services.
+
+#### MISC
+- Released from the `mirsafari` fork, pending inclusion upstream.
+- Add automated testing for API `5-snapshot`, to be replaced with `5.2.0` once released.
+- Acceptance tests skip based on the detected API version, replacing per-version skip lists in the pipeline.
+- Split API v4 and v5 pipeline testing into dedicated actions, with the comprehensive Terraform version matrices running after the per-API jobs.
+
 ## 1.25
 
 #### FIXES
