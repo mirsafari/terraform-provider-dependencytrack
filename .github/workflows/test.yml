@@ -302,6 +302,8 @@ jobs:
           - "5.0.2"
           - "5.0.5"
           - "5.1.0"
+          # Unreleased 5.2, needed for Service Account and Workload Identity Federation resources. Replace with "5.2.0" once released.
+          - "5-snapshot"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/test-v5

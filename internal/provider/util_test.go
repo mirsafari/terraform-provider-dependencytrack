@@ -23,6 +23,25 @@ func TestParseSemver(t *testing.T) {
 		requireEqual(t, semver.Patch, 3)
 	}
 	{
+		semver, err := ParseSemver("5.2.0-SNAPSHOT")
+		requireNoError(t, err)
+		requireEqual(t, semver.Major, 5)
+		requireEqual(t, semver.Minor, 2)
+		requireEqual(t, semver.Patch, 0)
+	}
+	{
+		semver, err := ParseSemver("1.2.3-rc1")
+		requireNoError(t, err)
+		requireEqual(t, semver.Major, 1)
+		requireEqual(t, semver.Minor, 2)
+		requireEqual(t, semver.Patch, 3)
+	}
+	{
+		semver, err := ParseSemver("1.2.-3")
+		requireError(t, err, "^unable to validate semver patch component, from: -3$")
+		requireNil(t, semver)
+	}
+	{
 		semver, err := ParseSemver("1.2")
 		requireError(t, err, "^found semver with 2 parts, expected 3$")
 		requireNil(t, semver)

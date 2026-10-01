@@ -581,6 +581,8 @@ linters:
         linters:
           - nonamedreturns
           - godoclint
+          - gocyclo
+          - cyclop
       - path: internal/provider/team_data_source_test.go
         linters:
           - godox
@@ -601,6 +603,8 @@ linters:
         linters:
           - revive
           - staticcheck
+          - gocyclo
+          - cyclop
       - path: internal/provider/component_property_resource_test.go
         linters:
           - godox
@@ -628,7 +632,12 @@ linters:
           - gocognit
           - gocyclo
           - cyclop
-      - path: internal/provider/vulnerability_policy_resource_test.go
+      - path: internal/provider/workload_identity_provider_resource.go
+        linters:
+          - gocognit
+          - gocyclo
+          - cyclop
+      - path: internal/provider/workload_identity_provider_resource_test.go
         linters:
           - cyclop
       - path: internal/provider/ldap_team_mapping_resource.go

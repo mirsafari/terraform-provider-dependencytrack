@@ -200,6 +200,9 @@ func (*dependencyTrackProvider) Resources(_ context.Context) []func() resource.R
 		NewNotificationRuleTeamResource,
 		NewTagNotificationRulesResource,
 		NewVulnerabilityPolicyResource,
+		NewServiceAccountResource,
+		NewWorkloadIdentityProviderResource,
+		NewWorkloadIdentityBindingResource,
 	}
 }
 

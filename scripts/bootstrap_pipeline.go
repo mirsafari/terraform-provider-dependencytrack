@@ -116,6 +116,8 @@ func getSemverParts(ctx context.Context, client *dtrack.Client) ([]int, error) {
 	parts := strings.Split(about.Version, ".")
 	result := make([]int, 0, len(parts))
 	for idx, p := range parts {
+		// Tolerate a pre-release suffix, such as "5.2.0-SNAPSHOT".
+		p, _, _ = strings.Cut(p, "-")
 		part, err := strconv.Atoi(p)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse semver part in %d of %s, from: %s", idx, p, err.Error())

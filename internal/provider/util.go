@@ -19,6 +19,8 @@ import (
 const (
 	SemverComponentCount        = 3
 	PropertyTypeEncryptedString = "ENCRYPTEDSTRING"
+	// Prefix which DependencyTrack reserves for Service Account usernames.
+	ServiceAccountUsernamePrefix = "svc:"
 	// LifecycleAction.
 	LifecycleCreate LifecycleAction = "Create"
 	LifecycleRead   LifecycleAction = "Read"
@@ -172,7 +174,12 @@ func ParseSemver(s string) (*Semver, error) {
 	if minor < 0 {
 		return nil, fmt.Errorf("unable to validate semver minor component, from: %d", minor)
 	}
-	patch, err := strconv.Atoi(parts[2])
+	// Tolerate a pre-release suffix on the patch component, such as "5.2.0-SNAPSHOT".
+	patchPart := parts[2]
+	if idx := strings.Index(patchPart, "-"); idx > 0 {
+		patchPart = patchPart[:idx]
+	}
+	patch, err := strconv.Atoi(patchPart)
 	if err != nil {
 		return nil, errors.New("unable to parse semver patch component, from: " + err.Error())
 	}
@@ -233,6 +240,40 @@ func TryMap[T, U any](items []T, actor func(T) (U, error)) ([]U, error) {
 	return result, nil
 }
 
+func FilterPagedV5[T any](
+	pageFetchFunc func(pageToken string, limit uint32) (dtrack.PageV5[T], error),
+	filter func(T) bool,
+) ([]T, error) {
+	filtered := []T{}
+	err := dtrack.ForEachV5(pageFetchFunc, func(item T) error {
+		if filter(item) {
+			filtered = append(filtered, item)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.New("Error in FilterPagedV5: " + err.Error())
+	}
+	return filtered, nil
+}
+
+func FindPagedV5[T any](
+	pageFetchFunc func(pageToken string, limit uint32) (dtrack.PageV5[T], error),
+	filter func(T) bool,
+) (*T, error) {
+	filtered, err := FilterPagedV5(pageFetchFunc, filter)
+	if err != nil {
+		return nil, err
+	}
+	if len(filtered) == 0 {
+		return nil, errors.New("did not find item")
+	} else if len(filtered) > 1 {
+		return nil, errors.New("found multiple items")
+	}
+	item := filtered[0]
+	return &item, nil
+}
+
 func TryParseUUID(value types.String, action LifecycleAction, tfPath path.Path) (uuid.UUID, diag.Diagnostic) {
 	if value.IsUnknown() {
 		errDiag := diag.NewAttributeErrorDiagnostic(
@@ -291,7 +332,11 @@ func SliceUnorderedEqual[T any](a, b []T, compare func(a, b T) int) bool {
 }
 
 func FindUserPrincipal(ctx context.Context, client dtrack.Client, username string) (*dtrack.UserPrincipal, error) {
-	// Search Order: Managed, OIDC, LDAP.
+	// Search Order: Service Account, Managed, OIDC, LDAP.
+	// Service Account. Only exists in API 5.2+, and is not listed within the User endpoints.
+	if name, ok := strings.CutPrefix(username, ServiceAccountUsernamePrefix); ok {
+		return findServiceAccountPrincipal(ctx, client, name)
+	}
 	// Managed.
 	managed, err := FilterPaged(
 		func(po dtrack.PageOptions) (dtrack.Page[dtrack.ManagedUser], error) {
@@ -357,4 +402,31 @@ func FindUserPrincipal(ctx context.Context, client dtrack.Client, username strin
 	}
 	// Not found.
 	return nil, errors.New("could not find user")
+}
+
+func findServiceAccountPrincipal(ctx context.Context, client dtrack.Client, name string) (*dtrack.UserPrincipal, error) {
+	account, err := client.ServiceAccount.Get(ctx, name)
+	if err != nil {
+		if err.Error() == "{\"type\":\"about:blank\",\"title\":\"Not Found\",\"detail\":\"The requested resource could not be found.\",\"status\":404} (status: 404)" {
+			return nil, errors.New("could not find user")
+		}
+		return nil, errors.New("Error in findServiceAccountPrincipal: " + err.Error())
+	}
+	return &dtrack.UserPrincipal{
+		Username: account.Username,
+		Email:    account.Email,
+		Name:     account.Name,
+		Id:       0,
+		Teams: Map(account.Teams, func(team dtrack.ServiceAccountTeam) dtrack.Team {
+			return dtrack.Team{
+				UUID: team.UUID,
+				Name: team.Name,
+			}
+		}),
+		Permissions: Map(account.Permissions, func(permission string) dtrack.Permission {
+			return dtrack.Permission{
+				Name: permission,
+			}
+		}),
+	}, nil
 }
