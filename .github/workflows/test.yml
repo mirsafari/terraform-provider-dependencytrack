@@ -279,6 +279,10 @@ jobs:
       - generate
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The unreleased 5-snapshot image tracks upstream main, so it is allowed to fail without blocking the pipeline.
+    # Currently it fails on amd64: zstd-jni 1.5.7-19 bundles a glibc-linked linux/amd64 library, which cannot be loaded on Alpine (musl),
+    # so the API server crashes on startup. The 5.1.0 image ships zstd-jni 1.5.7-15, which does not have this problem.
+    continue-on-error: ${{ matrix.api_version == '5-snapshot' }}
     services:
       db:
         image: postgres:18-alpine
